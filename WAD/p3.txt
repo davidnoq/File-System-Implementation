@@ -1,0 +1,115 @@
+.TH FileSystems Project3
+
+.SH Description
+File system representation in libWad/Wad.h&Wad.cpp mounted by fuse. Screencast:https://www.dropbox.com/scl/fi/2wwvlg2tzp9lywoi3mrh3/p3.mp4?rlkey=itxgjitnqa8iou0v58now0866&dl=0
+
+.SH libWad-Classes/DataStructures
+
+
+.SS struct-Descriptor
+int offset,length,name.
+.sp
+.SS struct-Tree
+root node and order variable(keeps track of insertion), designed as n-arry tree.
+.sp
+.SS struct-TreeNode
+descriptor variables, contains parent treenode and vector treenodes for directory&children(files). Insertion functions for vectors and destructor.
+.SH TreeFunctions-WadClass
+Wad class functions are almost always related to tree(Wad::getMagic() only exception, returns magic priv variable.
+.SS tree.buildTree(vector<Descriptor>&descriptors)-Wad::loadWad(conststring&path)
+WAD-calls wad constructor dynamically allocating wad object. Wad(conststringpath)- Private constructor that takes in file, sets wadpath, reads in magic,numdescriptor,descriptoroffset, seeks descriptoroffset and reads in all descriptors in list.
+.sp
+TREE-create root node, use stack to insert based on _end descriptor or if map marker reaches 10 files. if not a directory, add chilld(file), else addDirectory. Every node inserted incremeneted with order(keeps track of insertion).
+.sp
+.SS tree.findContent(path)-bool Wad::isContent(conststring&path)
+WAD-isContent returns findContent. 
+.sp
+TREE-split path into components, iterate components at root node. iterate directories till directory found. iterate children till name is found, return true, else false.
+.sp
+.SS tree.findDirectory(path)-bool Wad::isDirectory(conststring&path)
+isDirectory returns findDirectory. Same as above except only iterate directory and return true if found.
+.sp
+.SS tree.getSize(path)-int Wad::getSize(conststring&path)
+wad calls tree.getSize. split components of path, iterate directories, iterate children and if found return length of file. else -1.
+.sp
+.SS tree.returnDescriptor(path)-int Wad::getContents(conststring &path,char*buffer,intlength,int offset)
+if isContent(Path) continue, open file, file offset equal to tree.returnDescriptor(path). remaining bytes equal size of filepath-offset. bytestoread is minimum(length,remaining bytes). read buffer from file bytestoread length. return file.gcount() (bytes read).
+.sp
+returnDescriptor(path), separate components, iterate directories, iterate children, return children offset.
+.sp
+
+
+.SS tree.returnDirectory(conststring&path)-Wad::getDirectory(conststring &path,vector<string>*directory)
+WAD-if isDirectory continue, directory parameter equal to tree.returnDirectory(path). return size of vector.
+.sp
+TREE-separate components of path, iterate directories till last directory. insert all nodes from children and directories into a new vector, then sort them by insertion order. create new vector of strings, pushback names of the sorted vector, return vector.
+.sp
+.SS  tree.insertDirectory(conststring&path)-Wad::createDirectory(conststring&path)
+WAD-separate components, check if parent exists, if so insert directory into tree. create two new descriptors, update numdescriptor in wad and wadpath. seek descriptor offset and read in descriptors, iterate those descriptors passed in, insert at parent position (end descriptor). rewrite descriptors.
+.sp
+TREE-separate components, iterate directries to find component directory, add newdirectory to parent, increment order.
+.sp
+.SS tree.insertFile(conststring&path)-Wad::createFile(conststring&path)
+WAD-separate components, if parent isDirectory,continue, if file contains any directory specific strings(i.e:"_START") return, else, make new descriptor, iterate descriptors,find parent_end position& insert, rewrite descriptors, increment numdescriptor.
+.sp
+TREE-separate components, iterate directories, insert at parent, add node to vector of directories increment order.
+.sp
+.SS tree.updateFile(conststring&path,intlength,intoffset)-Wad::writeToFile(conststring&path,constchar*buffer,intlength,intoffset)
+WAD-read in descriptors, iterate descriptors to find file, update file length calculating with offset and length passed in. write buffer to end of lump(descriptorOffset). rewrite descriptors, update descriptor offset. return bytes copied.
+.sp
+TREE-sep components, iterate directories, iterate children till find component file, adjust length passed in and offset.
+.sp
+.SH fuse.cpp/Daemon
+fuse program utilized to mount directory utilizing library functionality.
+
+.SS write_callback
+call wad::writeToFile
+.SS mkdir_callback
+call wad::createDirectory
+.SS mknod_callback
+call wad::createFile
+.SS readdir_callback
+call wad::getDirectory, fill elements in buffer
+.SS read_callback
+return wad::getContents if not 0
+.SS getattr_callback
+if wad::isDirectory, set permissions,indicate-directory,return-0, if isContent, edit st_size, repeat.
+.SS main
+>3 arguments, wadpath is 3'd argument.create absolute wadpath. loadwad wad*. adjust commandline arguments, remove wadpath replacew/ mountDir. argc--, return fuse_main with function operation names, wad.
+
+.sp
+
+.SS
+
+.sp
+
+.SS
+
+.sp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.SH AUTHOR
+David Noguera 43599167
